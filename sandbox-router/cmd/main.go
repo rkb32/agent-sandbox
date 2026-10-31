@@ -103,7 +103,7 @@ func main() {
 
 // cacheSyncTimeout bounds the initial pod LIST. A slow API server should not
 // fail the pod, but a misconfigured RBAC should fail fast.
-const cacheSyncTimeout = 90 * time.Second
+var cacheSyncTimeout = 90 * time.Second
 
 // probeStartupTimeout bounds how long the pod may take to become ready before
 // /healthz fails. It must exceed cacheSyncTimeout, leaving headroom for the
