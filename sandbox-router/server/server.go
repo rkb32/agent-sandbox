@@ -144,8 +144,14 @@ func StartProbes(addr string, p *Probes, log logr.Logger, onErr func(error)) (st
 	if err != nil {
 		return nil, fmt.Errorf("listen probes on %s: %w", addr, err)
 	}
+	return serveProbes(ln, p, log, onErr), nil
+}
+
+// serveProbes serves the probe mux on an already-bound listener. It is split
+// out so tests can pass a listener they close to simulate a failure.
+func serveProbes(ln net.Listener, p *Probes, log logr.Logger, onErr func(error)) func() {
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              ln.Addr().String(),
 		Handler:           p.Mux(),
 		ReadHeaderTimeout: defaultReadHeaderTimeout,
 		IdleTimeout:       defaultIdleTimeout,
@@ -165,7 +171,7 @@ func StartProbes(addr string, p *Probes, log logr.Logger, onErr func(error)) (st
 		if err := srv.Shutdown(ctx); err != nil {
 			log.Error(err, "probes shutdown")
 		}
-	}, nil
+	}
 }
 
 // Run starts every configured listener and blocks until ctx is canceled or a

@@ -209,3 +209,27 @@ func TestMarkConcurrentTransitions(t *testing.T) {
 		t.Fatal("state returned to stateStarting after MarkReady ran")
 	}
 }
+
+// TestServeProbes_ListenerFailureCallsOnErr simulates a probe listener that
+// dies after startup, the case run() relies on to exit and restart the pod.
+func TestServeProbes_ListenerFailureCallsOnErr(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	failed := make(chan error, 1)
+	stop := serveProbes(ln, NewProbes(), logr.Discard(), func(err error) { failed <- err })
+	defer stop()
+
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close listener: %v", err)
+	}
+	select {
+	case err := <-failed:
+		if err == nil {
+			t.Fatal("onErr received nil")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("onErr was not called after the probe listener died")
+	}
+}
