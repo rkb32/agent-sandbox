@@ -151,7 +151,11 @@ users:
 
 	// Cancelling during the sync should report the shutdown, not an RBAC problem.
 	cancel()
-	<-done
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("run() did not return within 30s of cancel")
+	}
 	if !errors.Is(runErr, context.Canceled) {
 		t.Fatalf("run() after cancel: got %v, want context.Canceled", runErr)
 	}

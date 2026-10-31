@@ -93,7 +93,9 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, &cfg, log); err != nil {
+	// A SIGTERM during the initial cache sync is a normal shutdown, so exit 0
+	// instead of logging an error.
+	if err := run(ctx, &cfg, log); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error(err, "exited with error")
 		os.Exit(1)
 	}
@@ -237,8 +239,8 @@ func run(ctx context.Context, cfg *config.Config, log logr.Logger) (err error) {
 		if !ok {
 			// Shutdown cancels ctx, which also fails the sync. Report that
 			// instead of suggesting an RBAC problem.
-			if err := ctx.Err(); err != nil {
-				return fmt.Errorf("shutdown during initial cache sync: %w", err)
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return fmt.Errorf("shutdown during initial cache sync: %w", ctxErr)
 			}
 			return fmt.Errorf("pod cache failed initial sync (check RBAC for pods get/list/watch)")
 		}

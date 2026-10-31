@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -183,5 +184,28 @@ func TestMarkUnreadyBeforeReadyKeepsStarting(t *testing.T) {
 	p.MarkReady()
 	if !p.isReady() {
 		t.Fatal("MarkReady after an early MarkUnready did not become ready")
+	}
+}
+
+// TestMarkConcurrentTransitions runs the Mark* calls from many goroutines and
+// checks the one invariant that must hold under any interleaving: once
+// MarkReady has run, the state is never stateStarting again.
+func TestMarkConcurrentTransitions(t *testing.T) {
+	p := NewProbes()
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			p.MarkReady()
+		}()
+		go func() {
+			defer wg.Done()
+			p.MarkUnready()
+		}()
+	}
+	wg.Wait()
+	if probeState(p.state.Load()) == stateStarting {
+		t.Fatal("state returned to stateStarting after MarkReady ran")
 	}
 }
