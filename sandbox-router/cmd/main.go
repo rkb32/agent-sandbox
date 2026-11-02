@@ -93,8 +93,8 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	// A SIGTERM during the initial cache sync is a normal shutdown, so exit 0
-	// instead of logging an error.
+	// A SIGTERM during startup, such as the initial cache sync, is a normal
+	// shutdown, so exit 0 instead of logging an error.
 	if err := run(ctx, &cfg, log); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error(err, "exited with error")
 		os.Exit(1)
